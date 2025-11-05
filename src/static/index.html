@@ -1,32 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Page metadata and styles -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mergington High School Activities</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Header: School name and page title -->
     <header>
       <h1>Mergington High School</h1>
       <h2>Extracurricular Activities</h2>
     </header>
 
     <main>
+      <!-- Activities list section -->
       <section id="activities-container">
         <h3>Available Activities</h3>
-        <div id="activities-list">
+        <div id="activities-list" aria-live="polite">
           <!-- Activities will be loaded here -->
           <p>Loading activities...</p>
         </div>
       </section>
 
+      <!-- Sign-up form section -->
       <section id="signup-container">
         <h3>Sign Up for an Activity</h3>
-        <form id="signup-form">
+        <form id="signup-form" novalidate>
           <div class="form-group">
             <label for="email">Student Email:</label>
-            <input type="email" id="email" required placeholder="your-email@mergington.edu" />
+            <input type="email" id="email" 
+              required 
+              pattern=".+@mergington\.edu$"
+              placeholder="your-email@mergington.edu"
+              aria-describedby="email-error" />
+            <div id="email-error" class="error-message hidden"></div>
           </div>
           <div class="form-group">
             <label for="activity">Select Activity:</label>
@@ -35,16 +44,18 @@
               <!-- Activity options will be loaded here -->
             </select>
           </div>
-          <button type="submit">Sign Up</button>
+          <button type="submit" data-loading-text="Signing up...">Sign Up</button>
         </form>
         <div id="message" class="hidden"></div>
       </section>
     </main>
 
+    <!-- Footer: Copyright -->
     <footer>
       <p>&copy; 2023 Mergington High School</p>
     </footer>
 
+    <!-- Main client-side JS -->
     <script src="app.js"></script>
   </body>
 </html>
