@@ -1,3 +1,4 @@
+// (updateActivityCard was moved inside DOMContentLoaded so it can access helpers)
 // Main client-side logic for activities page
 document.addEventListener("DOMContentLoaded", () => {
   const activitiesList = document.getElementById("activities-list");
@@ -15,6 +16,58 @@ document.addEventListener("DOMContentLoaded", () => {
       ? parts.map(p => p[0].toUpperCase()).slice(0, 2).join("")
       : (namePart[0] || "?").toUpperCase();
     return initials;
+  }
+
+  // Update a single activity card (keeps UI in sync without a full refresh)
+  async function updateActivityCard(activityName) {
+    try {
+      const response = await fetch('/activities');
+      const activities = await response.json();
+      const updatedActivity = activities[activityName];
+
+      if (!updatedActivity) return;
+
+      const activityCard = Array.from(document.querySelectorAll('.activity-card'))
+        .find(card => card.querySelector('h4').textContent === activityName);
+
+      if (!activityCard) return;
+
+      const participantsSection = activityCard.querySelector('.participants-section');
+      const participants = Array.isArray(updatedActivity.participants) ? updatedActivity.participants : [];
+      const spotsLeft = updatedActivity.max_participants - participants.length;
+
+      // Update availability paragraph (the 3rd <p> inside the card)
+      const pNodes = activityCard.querySelectorAll('p');
+      if (pNodes && pNodes.length >= 3) {
+        pNodes[2].innerHTML = `<strong>Availability:</strong> ${spotsLeft} spots left`;
+      }
+
+      // Rebuild participants section
+      if (participants.length) {
+        participantsSection.innerHTML = `
+          <h5>Participants <span class="participant-count">${participants.length}</span></h5>
+          <ul class="participants-list">
+            ${participants
+              .map(
+                (p) => `
+                <li class="participant-item">
+                  <span class="avatar">${getInitials(p)}</span>
+                  <span class="participant-email">${p}</span>
+                  <span class="delete-icon" onclick="unregisterParticipant('${activityName}', '${p}')">×</span>
+                </li>`
+              )
+              .join("")}
+          </ul>
+        `;
+      } else {
+        participantsSection.innerHTML = `
+          <h5>Participants <span class="participant-count">0</span></h5>
+          <p class="info">No participants yet. Be the first to sign up!</p>
+        `;
+      }
+    } catch (err) {
+      console.error('updateActivityCard error', err);
+    }
   }
 
   // Function to fetch activities from API and populate UI
@@ -50,6 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li class="participant-item">
                       <span class="avatar">${getInitials(p)}</span>
                       <span class="participant-email">${p}</span>
+                      <span class="delete-icon" onclick="unregisterParticipant('${name}', '${p}')">×</span>
                     </li>`
                   )
                   .join("")}
@@ -124,8 +178,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.className = "message success";
         signupForm.reset();
 
-        // Refresh activities to show new participant immediately
-        await fetchActivities();
+          // Update the specific activity card
+          await updateActivityCard(activity);
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "message error";
@@ -147,6 +201,46 @@ document.addEventListener("DOMContentLoaded", () => {
       submitButton.textContent = originalText;
     }
   });
+
+  // Function to unregister a participant from an activity
+  async function unregisterParticipant(activity, email) {
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`,
+        {
+          method: "POST",
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        messageDiv.textContent = result.message;
+        messageDiv.className = "message success";
+
+          // Update the specific activity card
+          await updateActivityCard(activity);
+      } else {
+        messageDiv.textContent = result.detail || "An error occurred";
+        messageDiv.className = "message error";
+      }
+
+      messageDiv.classList.remove("hidden");
+
+      // Hide message after 5 seconds
+      setTimeout(() => {
+        messageDiv.classList.add("hidden");
+      }, 5000);
+    } catch (error) {
+      messageDiv.textContent = "Failed to unregister. Please try again.";
+      messageDiv.className = "message error";
+      messageDiv.classList.remove("hidden");
+      console.error("Error unregistering:", error);
+    }
+  }
+
+  // Make the unregister function available globally
+  window.unregisterParticipant = unregisterParticipant;
 
   // Initialize app by loading activities
   fetchActivities();
